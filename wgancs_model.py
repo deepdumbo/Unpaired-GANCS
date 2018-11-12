@@ -622,11 +622,18 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
     # Generator
     rows      = int(features.get_shape()[1])
     cols      = int(features.get_shape()[2])
+
+    features=tf.concat([tf.split(features, FLAGS.batch_size/4)],axis=-1)
+    labels=tf.concat([tf.split(labels, FLAGS.batch_size/4)],axis=-1)
+    print("!!!!FL", features,labels)
+
     channels  = int(features.get_shape()[3])
+    batch_size= int(features.get_shape()[0])
 
     #print('channels', features.get_shape())
 
-    gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
+    gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, 2])
+    gene_minput3d = tf.concat([tf.split(gene_minput, FLAGS.batch_size/4)],axis=-1)
 
     # TBD: Is there a better way to instance the generator?
     if architecture == 'aec':
@@ -657,7 +664,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         scope.reuse_variables()
 
         gene_output_real = gene_output_1
-        gene_output = tf.reshape(gene_output_real, [FLAGS.batch_size, rows, cols, 2])
+        gene_output = tf.reshape(gene_output_real, [batch_size, rows, cols, channels])
         gene_layers = gene_layers_1
 
         
@@ -666,13 +673,13 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         else:
           gene_output_complex = tf.complex(gene_output[:,:,:,0], gene_output[:,:,:,1])
           gene_output = tf.abs(gene_output_complex)
-          gene_output = tf.reshape(gene_output, [FLAGS.batch_size, rows, cols, 1])
+          gene_output = tf.reshape(gene_output, [batch_size, rows, cols, 1])
 
         #print('gene_output_train', gene_output.get_shape()) 
 
 
         # for testing input
-        gene_moutput_1, _ , gene_mlayers_1 = function_generator(sess, gene_minput, labels, masks, 1)
+        gene_moutput_1, _ , gene_mlayers_1 = function_generator(sess, gene_minput3d, labels, masks, 1)
         scope.reuse_variables()
 
         
@@ -680,7 +687,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         gene_moutput_real = gene_moutput_1
         #gene_moutput_complex = tf.complex(gene_moutput_real[:,:,:,0], gene_moutput_real[:,:,:,1])
         #gene_moutput = tf.abs(gene_moutput_complex)
-        #print('gene_moutput_test', gene_moutput.get_shape())i
+        #print('gene_moutput_test', gene_moutput.get_shape())
         gene_moutput = tf.reshape(gene_moutput_real, [FLAGS.batch_size, rows, cols, 2])
         gene_mlayers = gene_mlayers_1
 

@@ -361,14 +361,14 @@ def _train():
     #print(num_filename_test)
 
     # Permutate train and test split (SEPARATE FOLDERS)
-    index_permutation_split = random.sample(range(num_filename_train), num_filename_train)
+    '''index_permutation_split = random.sample(range(num_filename_train), num_filename_train)
     filenames_input_train = [filenames_input_train[x] for x in index_permutation_split]
     if FLAGS.dataset_label != FLAGS.dataset_train:  
         index_permutation_split = random.sample(range(len(filenames_output_train)), num_filename_train)
     elif FLAGS.permutation_split:
         index_permutation_split = random.sample(range(num_filename_train), num_filename_train)      
     filenames_output_train = [filenames_output_train[x] for x in index_permutation_split]
-        #print(np.shape(filenames_input_train))
+    '''
 
     # Permutate test split (SAME FOLDERS)
     if FLAGS.permutation_split: # do not permutate test for now
