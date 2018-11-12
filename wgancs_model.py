@@ -181,7 +181,7 @@ class Model:
             weight = tf.get_variable('weight', initializer=initw)
             weight = tf.transpose(weight, perm=[0, 1, 3, 2])
             prev_output = self.get_output()
-            output_shape = [FLAGS.batch_size,
+            output_shape = [int(FLAGS.batch_size/4),
                             int(prev_output.get_shape()[1]) * stride,
                             int(prev_output.get_shape()[2]) * stride,
                             num_units]
@@ -488,7 +488,7 @@ def Fourier(x, separate_complex=True):
 def _generator_model_with_scale(sess, features, labels, masks, channels, layer_output_skip=5,
                                 num_dc_layers=0):
     # Upside-down all-convolutional resnet
-    channels = 2
+    channels = 8
     #image_size = tf.shape(features)
     mapsize = 3
     res_units  = [64]*5 #[128]*5 #[64, 32, 16]#[256, 128, 96]
@@ -549,11 +549,14 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
 
         # sampled kspace
         first_layer = features
-        feature_kspace = Fourier(first_layer, separate_complex=True)        
+        feature_kspace=[]
+        for c in range(4):
+            feature_kspace.append(Fourier(first_layer[:,:,:,c*2:(c+1)*2],separate_complex=True))
+        feature_kspace = tf.stack(feature_kspace,-1)        
         #mask_kspace = tf.cast(masks, dtype=tf.float32) #tf.greater(tf.abs(feature_kspace),threshold_zero)  
 
         #print('sampling_rate', sess.run(tf.reduce_sum(tf.abs(mask_kspace)) / tf.size(mask_kspace)))
-        mask_kspace = tf.cast(masks, tf.complex64) * mix_DC
+        mask_kspace = tf.expand_dims(tf.expand_dims(tf.cast(masks, tf.complex64) * mix_DC,0),-1)
         #print('sampling_size', sess.run(tf.reduce_sum(tf.abs(mask_kspace))))
         #print('mask_kspace', sess.run(mask_kspace))
         projected_kspace = feature_kspace * mask_kspace
@@ -564,7 +567,10 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
             # get output and input
             last_layer = model.outputs[-1]                               
             # compute kspace
-            gene_kspace = Fourier(last_layer, separate_complex=True)                
+            gene_kspace =[]
+            for c in range(4):            
+                gene_kspace.append(Fourier(last_layer[:,:,:,c*2:(c+1)*2],separate_complex=True))
+            gene_kspace= tf.stack(gene_kspace,-1)     
             # affine projection
             corrected_kspace =  projected_kspace + gene_kspace * (1.0 - mask_kspace)
 
@@ -623,9 +629,9 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
     rows      = int(features.get_shape()[1])
     cols      = int(features.get_shape()[2])
 
-    features=tf.concat([tf.split(features, FLAGS.batch_size/4)],axis=-1)
-    labels=tf.concat([tf.split(labels, FLAGS.batch_size/4)],axis=-1)
-    print("!!!!FL", features,labels)
+    #features=tf.concat([tf.split(features, int(FLAGS.batch_size/4))],3)
+    labels=tf.concat(tf.split(labels, int(FLAGS.batch_size/4)),3)
+    features=tf.concat(tf.split(features,int(FLAGS.batch_size/4)),3)
 
     channels  = int(features.get_shape()[3])
     batch_size= int(features.get_shape()[0])
@@ -633,7 +639,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
     #print('channels', features.get_shape())
 
     gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, 2])
-    gene_minput3d = tf.concat([tf.split(gene_minput, FLAGS.batch_size/4)],axis=-1)
+    gene_minput3d = tf.concat(tf.split(gene_minput, int(FLAGS.batch_size/4)),3)
 
     # TBD: Is there a better way to instance the generator?
     if architecture == 'aec':
@@ -856,7 +862,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks, X,Z
     feature_mask = masks #tf.greater(tf.abs(feature_kspace),threshold_zero)
     #print('mask shape , get_shape():', feature_mask.get_shape())
 
-    loss_kspace = tf.cast(tf.abs(tf.square(gene_kspace - feature_kspace)),tf.float32)*tf.cast(feature_mask,tf.float32)
+    loss_kspace = 0.0#tf.cast(tf.abs(tf.square(gene_kspace - feature_kspace)),tf.float32)*tf.cast(feature_mask,tf.float32)
     #print('loss_kspace shape , get_shape():', loss_kspace.get_shape())
 
 
@@ -868,6 +874,7 @@ def create_generator_loss(disc_output, gene_output, features, labels, masks, X,Z
 
 
     # mse loss
+    labels=tf.concat(tf.split(labels, int(FLAGS.batch_size/4)),3)
     gene_l1_loss  = tf.reduce_mean(tf.abs(gene_output - labels), name='gene_l1_loss')
     '''
     gene_l2_loss  = tf.reduce_mean(tf.square(gene_output - labels), name='gene_l2_loss')
@@ -923,9 +930,10 @@ def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = No
     # disc_fake_loss     = tf.reduce_mean(cross_entropy_fake, name='disc_fake_loss')
     
     if FLAGS.wgan_gp:
+        real_data=tf.concat(tf.split(real_data, int(FLAGS.batch_size/4)),3)
         disc_cost = tf.reduce_mean(disc_fake_output) - tf.reduce_mean(disc_real_output)  
         # generate noisy inputs 
-        alpha = tf.random_uniform(shape=[FLAGS.batch_size, 1, 1, 1], minval=0.,maxval=1.) 
+        alpha = tf.random_uniform(shape=[int(FLAGS.batch_size/4), 1, 1, 1], minval=0.,maxval=1.) 
         interpolates = real_data + alpha*(fake_data - real_data) 
         if FLAGS.use_patches==True:
             gp_patch=[]

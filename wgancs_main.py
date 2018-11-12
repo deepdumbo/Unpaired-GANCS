@@ -441,10 +441,10 @@ def _train():
     
     print('train_features_queue', train_features.get_shape())
     print('train_labels_queue', train_labels.get_shape())
+    train_masks= train_masks[0,:,:]
     print('train_masks_queue', train_masks.get_shape())
 
 
-    #train_masks = tf.cast(sess.run(train_masks), tf.float32)
     #test_masks = tf.cast(sess.run(test_masks), tf.float32)
 
 
