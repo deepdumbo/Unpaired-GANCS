@@ -694,7 +694,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         #gene_moutput_complex = tf.complex(gene_moutput_real[:,:,:,0], gene_moutput_real[:,:,:,1])
         #gene_moutput = tf.abs(gene_moutput_complex)
         #print('gene_moutput_test', gene_moutput.get_shape())
-        gene_moutput = tf.reshape(gene_moutput_real, [FLAGS.batch_size, rows, cols, 2])
+        gene_moutput = tf.reshape(gene_moutput_real, [int(FLAGS.batch_size/4), rows, cols, 8])
         gene_mlayers = gene_mlayers_1
 
         if FLAGS.use_phase ==True:

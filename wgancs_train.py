@@ -33,7 +33,11 @@ def _summarize_progress(train_data, feature, label, gene_output,
     
     # output image
     if FLAGS.use_phase==True:
-      gene_output_complex = tf.complex(gene_output[:,:,:,0],gene_output[:,:,:,1])
+      gene_output_complex =[]
+      for c in [0,2,4,6]:
+        gene_output_complex.append(tf.complex(gene_output[:,:,:,c],gene_output[:,:,:,c+1]))
+      gene_output_complex= tf.stack(gene_output_complex,0)
+         
     else:
       gene_output_complex = gene_output
     mag_output = tf.maximum(tf.minimum(tf.abs(gene_output_complex), 1.0), 0.0)
@@ -246,7 +250,7 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
                 gene_output, gene_layers= td.sess.run(ops, feed_dict=feed_dict)       
                 inference_time = time.time() - forward_passing_time
 		
-                # print('gene_var_list',[x.shape for x in gene_var_list])
+                print('!!!!gene_output',gene_output.shape)
                 #print('gene_layers',[x.shape for x in gene_layers])
                 #print("test time data consistency:", gene_dc_loss): add td.gene_dc_loss in ops
                 # print('disc_var_list',[x.shape for x in disc_var_list])
