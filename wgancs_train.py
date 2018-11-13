@@ -250,7 +250,6 @@ def train_model(train_data, batchcount, num_sample_train=1984, num_sample_test=1
                 gene_output, gene_layers= td.sess.run(ops, feed_dict=feed_dict)       
                 inference_time = time.time() - forward_passing_time
 		
-                print('!!!!gene_output',gene_output.shape)
                 #print('gene_layers',[x.shape for x in gene_layers])
                 #print("test time data consistency:", gene_dc_loss): add td.gene_dc_loss in ops
                 # print('disc_var_list',[x.shape for x in disc_var_list])

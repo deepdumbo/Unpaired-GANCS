@@ -560,7 +560,6 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
         #print('sampling_size', sess.run(tf.reduce_sum(tf.abs(mask_kspace))))
         #print('mask_kspace', sess.run(mask_kspace))
         projected_kspace = feature_kspace * mask_kspace
-
         # add dc layers
         num_dc_layerss = 1
         for index_dc_layer in range(num_dc_layerss):
@@ -575,20 +574,23 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
             corrected_kspace =  projected_kspace + gene_kspace * (1.0 - mask_kspace)
 
             # inverse fft
-            corrected_complex = tf.ifft2d(corrected_kspace)
+            corrected_complex=[]
+            for c in range(4):
+                corrected_complex.append(tf.ifft2d(corrected_kspace[:,:,:,c]))
+            corrected_complex=tf.stack(corrected_complex,-1)
             image_size = tf.shape(corrected_complex)
-       
             ## get abs
             #corrected_mag = tf.cast(tf.abs(corrected_complex), tf.float32)
            
             #print('corrected_complex', corrected_complex.get_shape())
  
             #get real and imaginary parts
-            corrected_real = tf.reshape(tf.real(corrected_complex), [FLAGS.batch_size, image_size[1], image_size[2], 1])
-            corrected_imag = tf.reshape(tf.imag(corrected_complex), [FLAGS.batch_size, image_size[1], image_size[2], 1])
-           
+            corrected_real_concat =[]
+            for c in range(4):
+               corrected_real_concat.append(tf.reshape(tf.real(corrected_complex[:,:,:,c]), [4, image_size[1], image_size[2], 1]))
+               corrected_real_concat.append(tf.reshape(tf.imag(corrected_complex[:,:,:,c]), [4, image_size[1], image_size[2], 1])) 
             #print('size_corrected_real', corrected_real.get_shape())
-            corrected_real_concat = tf.concat([corrected_real, corrected_imag], axis=3)
+            corrected_real_concat = tf.concat(corrected_real_concat, axis=3)
             #print('corrected_concat', corrected_real_concat.get_shape())
             #print('channels', channels)
 
@@ -670,7 +672,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         scope.reuse_variables()
 
         gene_output_real = gene_output_1
-        gene_output = tf.reshape(gene_output_real, [batch_size, rows, cols, channels])
+        gene_output = tf.reshape(gene_output_real, [4, rows, cols, channels])
         gene_layers = gene_layers_1
 
         
